@@ -376,21 +376,141 @@ class DocumentoController {
             $ext = ($mime === 'application/pdf') ? 'pdf' : 'jpg';
         }
 
-        // Nombre de archivo seguro
-        $prefijo = preg_replace('/[^a-zA-Z0-9_-]/', '_', $noOficio);
-        $nombreServidor = 'doc_' . $prefijo . '_' . uniqid() . '.' . strtolower($ext);
+        // Asegurar que el directorio de almacenamiento exista y tenga permisos
+        if (!is_dir(UPLOAD_DIR)) {
+            @mkdir(UPLOAD_DIR, 0777, true);
+        }
+        @chmod(UPLOAD_DIR, 0777);
+
+        // Si el archivo subido es una imagen (foto de cámara o captura), convertirlo a PDF
+        $esImagen = (strpos($mime, 'image/') === 0);
+
+        // El archivo final en el servidor SIEMPRE será un PDF
+        $nombreServidor = 'doc_' . $prefijo . '_' . uniqid() . '.pdf';
         $destino = UPLOAD_DIR . $nombreServidor;
 
-        if (!move_uploaded_file($archivo['tmp_name'], $destino)) {
-            throw new Exception("No se pudo mover el archivo digitalizado a la carpeta de almacenamiento.");
+        if ($esImagen) {
+            $this->convertirImagenAPdf($archivo['tmp_name'], $destino);
+            $nombreOriginal = pathinfo($archivo['name'], PATHINFO_FILENAME) . '.pdf';
+            $mimeFinal = 'application/pdf';
+            $tamanoFinal = file_exists($destino) ? filesize($destino) : $archivo['size'];
+        } else {
+            // Ya es un archivo PDF nativo
+            if (!@move_uploaded_file($archivo['tmp_name'], $destino)) {
+                if (!@copy($archivo['tmp_name'], $destino)) {
+                    $lastError = error_get_last();
+                    $detalle = $lastError ? " (" . $lastError['message'] . ")" : "";
+                    throw new Exception("No se pudo mover el archivo digitalizado a la carpeta de almacenamiento{$detalle}. Verifica los permisos de escritura en uploads/documentos.");
+                }
+            }
+            $nombreOriginal = $archivo['name'];
+            $mimeFinal = $mime;
+            $tamanoFinal = $archivo['size'];
         }
 
         return [
-            'nombre_original' => $archivo['name'],
+            'nombre_original' => $nombreOriginal,
             'nombre_servidor' => $nombreServidor,
             'ruta_relativa'   => 'uploads/documentos/' . $nombreServidor,
-            'tipo_mime'       => $mime,
-            'tamano_bytes'    => $archivo['size']
+            'tipo_mime'       => $mimeFinal,
+            'tamano_bytes'    => $tamanoFinal
         ];
+    }
+
+    /**
+     * Convierte una imagen (JPG/PNG/WEBP) en un archivo PDF válido estándar (PDF 1.4)
+     */
+    private function convertirImagenAPdf(string $rutaImagen, string $destinoPdf): void {
+        $info = @getimagesize($rutaImagen);
+        if (!$info) {
+            throw new Exception("No se pudo leer la información de la imagen capturada.");
+        }
+
+        $origW = $info[0];
+        $origH = $info[1];
+        $mime = $info['mime'];
+
+        $tmpJpg = null;
+        if ($mime === 'image/jpeg') {
+            $jpegData = file_get_contents($rutaImagen);
+        } else {
+            $tmpJpg = tempnam(sys_get_temp_dir(), 'img_pdf_');
+            $img = null;
+            if ($mime === 'image/png') {
+                $img = @imagecreatefrompng($rutaImagen);
+            } elseif ($mime === 'image/webp') {
+                $img = @imagecreatefromwebp($rutaImagen);
+            }
+
+            if ($img) {
+                // Fondo blanco por si hay transparencias PNG
+                $bg = imagecreatetruecolor($origW, $origH);
+                $white = imagecolorallocate($bg, 255, 255, 255);
+                imagefill($bg, 0, 0, $white);
+                imagecopy($bg, $img, 0, 0, 0, 0, $origW, $origH);
+                imagejpeg($bg, $tmpJpg, 90);
+                imagedestroy($bg);
+                imagedestroy($img);
+                $jpegData = file_get_contents($tmpJpg);
+            } else {
+                throw new Exception("Formato de imagen no compatible para digitalización a PDF.");
+            }
+        }
+
+        // Dimensiones estándar A4 en puntos (595.28 x 841.89 pt)
+        $pageW = 595.28;
+        $pageH = 841.89;
+
+        // Margen de 28.35 pt (1 cm)
+        $margin = 28.35;
+        $maxW = $pageW - ($margin * 2);
+        $maxH = $pageH - ($margin * 2);
+
+        $scale = min($maxW / $origW, $maxH / $origH);
+        $finalW = $origW * $scale;
+        $finalH = $origH * $scale;
+        $posX = ($pageW - $finalW) / 2;
+        $posY = ($pageH - $finalH) / 2;
+
+        $len = strlen($jpegData);
+
+        $pdf = "%PDF-1.4\n";
+        $offsets = [];
+
+        // Obj 1: Catalog
+        $offsets[1] = strlen($pdf);
+        $pdf .= "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n";
+
+        // Obj 2: Pages
+        $offsets[2] = strlen($pdf);
+        $pdf .= "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n";
+
+        // Obj 3: Page
+        $offsets[3] = strlen($pdf);
+        $pdf .= "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " . sprintf("%.2f %.2f", $pageW, $pageH) . "] /Resources << /XObject << /Im1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n";
+
+        // Obj 4: Image XObject
+        $offsets[4] = strlen($pdf);
+        $pdf .= "4 0 obj\n<< /Type /XObject /Subtype /Image /Width {$origW} /Height {$origH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length {$len} >>\nstream\n" . $jpegData . "\nendstream\nendobj\n";
+
+        // Obj 5: Page Content stream
+        $content = sprintf("q %.2f 0 0 %.2f %.2f %.2f cm /Im1 Do Q", $finalW, $finalH, $posX, $posY);
+        $contentLen = strlen($content);
+        $offsets[5] = strlen($pdf);
+        $pdf .= "5 0 obj\n<< /Length {$contentLen} >>\nstream\n{$content}\nendstream\nendobj\n";
+
+        // Xref
+        $xrefPos = strlen($pdf);
+        $pdf .= "xref\n0 6\n0000000000 65535 f \n";
+        for ($i = 1; $i <= 5; $i++) {
+            $pdf .= sprintf("%010d 00000 n \n", $offsets[$i]);
+        }
+        $pdf .= "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n{$xrefPos}\n%%EOF";
+
+        file_put_contents($destinoPdf, $pdf);
+
+        if ($tmpJpg && file_exists($tmpJpg)) {
+            @unlink($tmpJpg);
+        }
     }
 }

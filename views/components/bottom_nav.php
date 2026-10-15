@@ -1,10 +1,10 @@
 <!-- BARRA DE NAVEGACIÓN INFERIOR (MÓVIL - MOCKUP OFICIAL) -->
 <nav class="bottom-nav">
-    <a href="index.php" class="bottom-nav-item active" data-target="inicio">
+    <a href="#inicio" class="bottom-nav-item nav-view-link active" data-view="inicio" data-target="inicio">
         <i class="bi bi-house-door-fill"></i>
         <span>Inicio</span>
     </a>
-    <a href="#listado_documentos" class="bottom-nav-item" data-target="documentos">
+    <a href="#documentos" class="bottom-nav-item nav-view-link" data-view="documentos" data-target="documentos">
         <i class="bi bi-folder-fill"></i>
         <span>Documentos</span>
     </a>
@@ -14,12 +14,12 @@
         </div>
         <span>Nuevo</span>
     </a>
-    <a href="#search_filter_box" class="bottom-nav-item" data-target="buscar">
-        <i class="bi bi-search"></i>
-        <span>Buscar</span>
+    <a href="#reportes" class="bottom-nav-item nav-view-link" data-view="reportes" data-target="reportes">
+        <i class="bi bi-bar-chart-fill"></i>
+        <span>Reportes</span>
     </a>
-    <a href="#" class="bottom-nav-item" data-target="perfil" onclick="Swal.fire('Perfil de Usuario', 'Sesión iniciada como Operador/Administrador.', 'info');">
-        <i class="bi bi-person-circle"></i>
-        <span>Perfil</span>
+    <a href="#usuarios" class="bottom-nav-item nav-view-link" data-view="usuarios" data-target="usuarios">
+        <i class="bi bi-people-fill"></i>
+        <span>Usuarios</span>
     </a>
 </nav>

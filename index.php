@@ -7,6 +7,10 @@
  * ====================================================================
  */
 require_once __DIR__ . '/config/config.php';
+require_once __DIR__ . '/controllers/AuthController.php';
+
+// Protección de acceso con sesión de usuario obligatoria
+AuthController::verificarSesion();
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -40,107 +44,127 @@ require_once __DIR__ . '/config/config.php';
         <!-- NAVBAR SUPERIOR -->
         <?php include_once __DIR__ . '/views/components/navbar.php'; ?>
 
-        <div class="page-container" id="listado_documentos">
+        <div class="page-container">
 
-            <!-- CABECERA DEL PANEL -->
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-                <div>
-                    <h3 class="fw-bold text-primary mb-1" style="color: var(--unach-blue-primary) !important;">
-                        Listado de Documentos
-                    </h3>
-                    <p class="text-muted small mb-0">
-                        Administración, control de oficios y seguimiento de trámites
-                    </p>
-                </div>
-                <button type="button" class="btn btn-primary px-3 py-2 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoDocumento" style="background-color: var(--unach-blue-secondary); border-color: var(--unach-blue-secondary);">
-                    <i class="bi bi-plus-lg me-1"></i> + Nuevo Documento
-                </button>
-            </div>
+            <!-- ============================================================== -->
+            <!-- VISTA 0: INICIO / DASHBOARD DE BIENVENIDA -->
+            <!-- ============================================================== -->
+            <?php include_once __DIR__ . '/views/inicio.php'; ?>
 
-            <!-- BÚSQUEDA Y FILTROS HORIZONTALES (MOCKUP OFICIAL PÁG. 4) -->
-            <div class="search-filter-box" id="search_filter_box">
-                <!-- Buscador de texto general -->
-                <div class="input-group search-input-group mb-3">
-                    <span class="input-group-text bg-white text-muted">
-                        <i class="bi bi-search"></i>
-                    </span>
-                    <input type="text" class="form-control" id="input_buscar" placeholder="Buscar por no. de oficio, asunto, remitente o destinatario...">
-                    <button class="btn btn-primary" type="button" id="btn_buscar" style="background-color: var(--unach-blue-secondary);">
-                        Buscar
+            <!-- ============================================================== -->
+            <!-- VISTA 1: LISTADO DE DOCUMENTOS (MOCKUP OFICIAL) -->
+            <!-- ============================================================== -->
+            <div class="view-section d-none" id="seccion_documentos">
+                <!-- CABECERA DEL PANEL -->
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+                    <div>
+                        <h3 class="fw-bold text-primary mb-1" style="color: var(--unach-blue-primary) !important;">
+                            Listado de Documentos
+                        </h3>
+                        <p class="text-muted small mb-0">
+                            Administración, control de oficios y seguimiento de trámites
+                        </p>
+                    </div>
+                    <button type="button" class="btn btn-primary px-3 py-2 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoDocumento" style="background-color: var(--unach-blue-secondary); border-color: var(--unach-blue-secondary);">
+                        <i class="bi bi-plus-lg me-1"></i> + Nuevo Documento
                     </button>
                 </div>
 
-                <!-- Filtros combinados de Estatus y Fechas -->
-                <div class="row g-2 align-items-end">
-                    <div class="col-12 col-md-3">
-                        <label for="filtro_estatus" class="form-label small text-muted mb-1 fw-bold">Estatus</label>
-                        <select class="form-select form-select-sm" id="filtro_estatus">
-                            <option value="todos" selected>Todos</option>
-                            <option value="Recibido">Recibido</option>
-                            <option value="En proceso">En proceso</option>
-                            <option value="Atendido">Atendido</option>
-                        </select>
-                    </div>
-
-                    <div class="col-6 col-md-3">
-                        <label for="filtro_desde" class="form-label small text-muted mb-1 fw-bold">Desde</label>
-                        <input type="date" class="form-control form-control-sm" id="filtro_desde">
-                    </div>
-
-                    <div class="col-6 col-md-3">
-                        <label for="filtro_hasta" class="form-label small text-muted mb-1 fw-bold">Hasta</label>
-                        <input type="date" class="form-control form-control-sm" id="filtro_hasta">
-                    </div>
-
-                    <div class="col-12 col-md-3 d-flex gap-2">
-                        <button type="button" class="btn btn-primary btn-sm flex-grow-1 fw-semibold" id="btn_filtrar" style="background-color: var(--unach-blue-secondary);">
-                            <i class="bi bi-funnel-fill me-1"></i> Filtrar
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btn_limpiar_filtros" title="Limpiar Filtros">
-                            <i class="bi bi-arrow-counterclockwise"></i>
+                <!-- BÚSQUEDA Y FILTROS HORIZONTALES (MOCKUP OFICIAL PÁG. 4) -->
+                <div class="search-filter-box" id="search_filter_box">
+                    <!-- Buscador de texto general -->
+                    <div class="input-group search-input-group mb-3">
+                        <span class="input-group-text bg-white text-muted">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" class="form-control" id="input_buscar" placeholder="Buscar por no. de oficio, asunto, remitente o destinatario...">
+                        <button class="btn btn-primary" type="button" id="btn_buscar" style="background-color: var(--unach-blue-secondary);">
+                            Buscar
                         </button>
                     </div>
-                </div>
-            </div>
 
-            <!-- CONTENEDOR DE TABLA (ESCRITORIO / TABLETA) -->
-            <div class="card-custom d-none d-md-block">
-                <div class="table-responsive">
-                    <table class="table table-documents align-middle">
-                        <thead>
-                            <tr>
-                                <th>No. Oficio</th>
-                                <th>Fecha</th>
-                                <th>Asunto</th>
-                                <th>Remitente</th>
-                                <th>Destinatario</th>
-                                <th>Estatus</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla_documentos_body">
-                            <!-- Los registros se cargan dinámicamente mediante jQuery AJAX -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                    <!-- Filtros combinados de Estatus y Fechas -->
+                    <div class="row g-2 align-items-end">
+                        <div class="col-12 col-md-3">
+                            <label for="filtro_estatus" class="form-label small text-muted mb-1 fw-bold">Estatus</label>
+                            <select class="form-select form-select-sm" id="filtro_estatus">
+                                <option value="todos" selected>Todos</option>
+                                <option value="Recibido">Recibido</option>
+                                <option value="En proceso">En proceso</option>
+                                <option value="Atendido">Atendido</option>
+                            </select>
+                        </div>
 
-            <!-- CONTENEDOR DE TARJETAS (MÓVIL) -->
-            <div class="d-md-none" id="lista_documentos_movil">
-                <!-- Se llena dinámicamente con tarjetas compactas en pantallas pequeñas -->
-            </div>
+                        <div class="col-6 col-md-3">
+                            <label for="filtro_desde" class="form-label small text-muted mb-1 fw-bold">Desde</label>
+                            <input type="date" class="form-control form-control-sm" id="filtro_desde">
+                        </div>
 
-            <!-- PIE DE TABLA: CONTADOR Y PAGINACIÓN (MOCKUP PÁG. 4) -->
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 px-2">
-                <div class="text-muted small" id="info_paginacion">
-                    Mostrando 1 a 5 de 5 registros
+                        <div class="col-6 col-md-3">
+                            <label for="filtro_hasta" class="form-label small text-muted mb-1 fw-bold">Hasta</label>
+                            <input type="date" class="form-control form-control-sm" id="filtro_hasta">
+                        </div>
+
+                        <div class="col-12 col-md-3 d-flex gap-2">
+                            <button type="button" class="btn btn-primary btn-sm flex-grow-1 fw-semibold" id="btn_filtrar" style="background-color: var(--unach-blue-secondary);">
+                                <i class="bi bi-funnel-fill me-1"></i> Filtrar
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="btn_limpiar_filtros" title="Limpiar Filtros">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <nav aria-label="Navegación de documentos">
-                    <ul class="pagination pagination-sm mb-0" id="controles_paginacion">
-                        <!-- Botones de paginación generados por JS -->
-                    </ul>
-                </nav>
-            </div>
+
+                <!-- CONTENEDOR DE TABLA (ESCRITORIO / TABLETA) -->
+                <div class="card-custom d-none d-md-block">
+                    <div class="table-responsive">
+                        <table class="table table-documents align-middle">
+                            <thead>
+                                <tr>
+                                    <th>No. Oficio</th>
+                                    <th>Fecha</th>
+                                    <th>Asunto</th>
+                                    <th>Remitente</th>
+                                    <th>Destinatario</th>
+                                    <th>Estatus</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla_documentos_body">
+                                <!-- Filas dinámicas -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- CONTENEDOR DE TARJETAS (MÓVIL) -->
+                <div class="d-md-none" id="lista_documentos_movil">
+                    <!-- Filas dinámicas móviles -->
+                </div>
+
+                <!-- PIE DE TABLA: CONTADOR Y PAGINACIÓN (MOCKUP PÁG. 4) -->
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 px-2">
+                    <div class="text-muted small" id="info_paginacion">
+                        Mostrando registros...
+                    </div>
+                    <nav aria-label="Navegación de documentos">
+                        <ul class="pagination pagination-sm mb-0" id="controles_paginacion">
+                            <!-- Botones generados por JS -->
+                        </ul>
+                    </nav>
+                </div>
+            </div><!-- /#seccion_documentos -->
+
+            <!-- ============================================================== -->
+            <!-- VISTA 2: REPORTES Y ESTADÍSTICAS -->
+            <!-- ============================================================== -->
+            <?php include_once __DIR__ . '/views/reportes.php'; ?>
+
+            <!-- ============================================================== -->
+            <!-- VISTA 3: USUARIOS Y PERSONAL -->
+            <!-- ============================================================== -->
+            <?php include_once __DIR__ . '/views/usuarios.php'; ?>
 
         </div><!-- /.page-container -->
 
@@ -152,6 +176,7 @@ require_once __DIR__ . '/config/config.php';
 <?php include_once __DIR__ . '/views/components/modal_nuevo.php'; ?>
 <?php include_once __DIR__ . '/views/components/modal_pdf.php'; ?>
 <?php include_once __DIR__ . '/views/components/modal_status.php'; ?>
+<?php include_once __DIR__ . '/views/components/modal_camara.php'; ?>
 
 <!-- BARRA DE NAVEGACIÓN INFERIOR PARA MÓVILES -->
 <?php include_once __DIR__ . '/views/components/bottom_nav.php'; ?>
@@ -164,6 +189,12 @@ require_once __DIR__ . '/config/config.php';
 
 <!-- SweetAlert2 JS -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.7/dist/sweetalert2.all.min.js"></script>
+
+<!-- Chart.js 4.4.2 para Dashboard y Reportes -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+<!-- jsPDF 2.5.1 para convertir fotos/imágenes a PDF en cliente -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <!-- Lógica de Aplicación Frontend -->
 <script src="assets/js/app.js"></script>
