@@ -6,8 +6,13 @@
  */
 
 $(document).ready(function () {
+    // Instancias de gráficos Chart.js
+    let chartEstatusInstance = null;
+    let chartTiposInstance = null;
+
     // Estado global de la aplicación
     let estadoApp = {
+        vistaActual: 'inicio',
         paginaActual: 1,
         porPagina: 5,
         totalRegistros: 0,
@@ -25,8 +30,151 @@ $(document).ready(function () {
 
     function inicializarApp() {
         cargarCatalogos();
-        cargarDocumentos();
+        cargarInicio();
         configurarEventos();
+        configurarNavegacionVistas();
+    }
+
+    // ----------------------------------------------------------------
+    // NAVEGACIÓN ENTRE VISTAS (INICIO, DOCUMENTOS, REPORTES, USUARIOS)
+    // ----------------------------------------------------------------
+    function configurarNavegacionVistas() {
+        $(document).on('click', '.nav-view-link', function (e) {
+            const vista = $(this).data('view');
+            if (vista) {
+                e.preventDefault();
+                cambiarVista(vista);
+            }
+        });
+
+        // Revisar hash en la URL (ej: #inicio, #documentos, #reportes o #usuarios)
+        const hash = window.location.hash.replace('#', '');
+        if (hash === 'documentos' || hash === 'reportes' || hash === 'usuarios') {
+            cambiarVista(hash);
+        } else {
+            cambiarVista('inicio');
+        }
+    }
+
+    function cambiarVista(vista) {
+        estadoApp.vistaActual = vista;
+
+        // Ocultar todas las secciones
+        $('.view-section').addClass('d-none');
+
+        // Actualizar estados activos en sidebar y bottom nav
+        $('.nav-view-link').removeClass('active');
+        $(`.nav-view-link[data-view="${vista}"]`).addClass('active');
+
+        // Mostrar sección correspondiente y cargar sus datos
+        if (vista === 'inicio') {
+            $('#seccion_inicio').removeClass('d-none');
+            cargarInicio();
+        } else if (vista === 'documentos') {
+            $('#seccion_documentos').removeClass('d-none');
+            cargarDocumentos();
+        } else if (vista === 'reportes') {
+            $('#seccion_reportes').removeClass('d-none');
+            cargarReportes();
+        } else if (vista === 'usuarios') {
+            $('#seccion_usuarios').removeClass('d-none');
+            cargarUsuarios();
+        }
+
+        // Desplazar suavemente hacia arriba
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ----------------------------------------------------------------
+    // 0. CARGA DE DATOS PARA LA VISTA DE INICIO / DASHBOARD
+    // ----------------------------------------------------------------
+    function cargarInicio() {
+        const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const fechaActual = new Date().toLocaleDateString('es-MX', opcionesFecha);
+        $('#inicio_fecha_actual').text(fechaActual.charAt(0).toUpperCase() + fechaActual.slice(1));
+
+        $.ajax({
+            url: 'api/get_inicio.php',
+            type: 'GET',
+            dataType: 'json',
+            success: function (res) {
+                if (res.success && res.data) {
+                    const d = res.data;
+
+                    // 1. Tarjetas KPI
+                    $('#inicio_kpi_total').text(d.kpis.total || 0);
+                    $('#inicio_kpi_recibidos').text(d.kpis.recibidos || 0);
+                    $('#inicio_kpi_proceso').text(d.kpis.en_proceso || 0);
+                    $('#inicio_kpi_atendidos').text(d.kpis.atendidos || 0);
+
+                    // 2. Últimas Recepciones en Ventanilla
+                    const $listaDocs = $('#inicio_lista_ultimos_docs').empty();
+                    if (!d.ultimos_documentos || d.ultimos_documentos.length === 0) {
+                        $listaDocs.html('<div class="p-3 text-center text-muted">No hay documentos registrados aún.</div>');
+                    } else {
+                        d.ultimos_documentos.forEach(doc => {
+                            const badge = obtenerClaseBadge(doc.estatus);
+                            const fecha = formatearFecha(doc.fecha_recepcion);
+                            const rutaPdf = doc.archivo_pdf ? doc.archivo_pdf : 'uploads/documentos/demo_001.pdf';
+
+                            $listaDocs.append(`
+                                <div class="list-group-item p-3 border-0 border-bottom">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <strong class="text-primary">${doc.no_oficio}</strong>
+                                            <span class="badge bg-secondary-subtle text-dark">${doc.tipo_documento}</span>
+                                        </div>
+                                        <span class="status-badge ${badge}">${doc.estatus}</span>
+                                    </div>
+                                    <div class="fw-semibold text-dark text-truncate mb-1" style="max-width: 90%;" title="${doc.asunto}">
+                                        ${doc.asunto}
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center text-muted small">
+                                        <div class="text-truncate" style="max-width: 70%;">
+                                            <i class="bi bi-person me-1"></i> ${doc.remitente} &rarr; ${doc.destinatario}
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="d-none d-sm-inline"><i class="bi bi-calendar3 me-1"></i> ${fecha}</span>
+                                            <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 btn-ver-pdf" 
+                                                    data-pdf="${rutaPdf}" 
+                                                    data-oficio="${doc.no_oficio}">
+                                                <i class="bi bi-eye"></i> Ver
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `);
+                        });
+                    }
+
+                    // 3. Bitácora de Actividad
+                    const $listaAct = $('#inicio_lista_actividad').empty();
+                    if (!d.actividad_reciente || d.actividad_reciente.length === 0) {
+                        $listaAct.html('<div class="text-muted small text-center py-2">Sin actividad reciente.</div>');
+                    } else {
+                        d.actividad_reciente.forEach(act => {
+                            const badge = obtenerClaseBadge(act.estatus_nuevo);
+                            const fechaHora = act.fecha_cambio ? act.fecha_cambio.substring(5, 16) : '';
+                            $listaAct.append(`
+                                <div class="timeline-item">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <strong class="text-primary">${act.no_oficio}</strong>
+                                        <span class="badge ${badge} p-1" style="font-size: 0.7rem;">${act.estatus_nuevo}</span>
+                                    </div>
+                                    <div class="text-muted small mb-1">${act.observacion || 'Actualización de estatus'}</div>
+                                    <div class="text-muted" style="font-size: 0.72rem;">
+                                        <i class="bi bi-clock me-1"></i> ${fechaHora} por ${act.usuario_nombre}
+                                    </div>
+                                </div>
+                            `);
+                        });
+                    }
+                }
+            },
+            error: function () {
+                console.warn('No se pudieron recuperar las métricas de inicio.');
+            }
+        });
     }
 
     // ----------------------------------------------------------------
@@ -49,9 +197,9 @@ $(document).ready(function () {
     }
 
     function poblarSelects(data) {
-        // Llenar select de estatus en formulario de registro
+        // Llenar select de estatus si existiera en la vista
         const $selectEstatus = $('#select_estatus');
-        if ($selectEstatus.length && data.estatus) {
+        if ($selectEstatus.length && $selectEstatus.is('select') && data.estatus) {
             $selectEstatus.empty();
             data.estatus.forEach(item => {
                 $selectEstatus.append(`<option value="${item.id_estatus}">${item.nombre}</option>`);
@@ -136,7 +284,7 @@ $(document).ready(function () {
     }
 
     // ----------------------------------------------------------------
-    // 3. RENDERIZACIÓN DE TABLA ESCRITORIO (MOCKUP PÁG. 4)
+    // 3. RENDERIZACIÓN DE TABLA ESCRITORIO
     // ----------------------------------------------------------------
     function renderizarTabla(docs) {
         const $tbody = $('#tabla_documentos_body').empty();
@@ -207,7 +355,7 @@ $(document).ready(function () {
     }
 
     // ----------------------------------------------------------------
-    // 4. RENDERIZACIÓN EN MÓVIL (TARJETAS COMPACTAS)
+    // 4. RENDERIZACIÓN EN MÓVIL
     // ----------------------------------------------------------------
     function renderizarMovil(docs) {
         const $container = $('#lista_documentos_movil').empty();
@@ -277,7 +425,6 @@ $(document).ready(function () {
 
         const $paginacion = $('#controles_paginacion').empty();
 
-        // Botón Anterior
         const deshabAnt = data.pagina <= 1 ? 'disabled' : '';
         $paginacion.append(`
             <li class="page-item ${deshabAnt}">
@@ -285,7 +432,6 @@ $(document).ready(function () {
             </li>
         `);
 
-        // Números de página
         for (let i = 1; i <= estadoApp.totalPaginas; i++) {
             const activa = i === data.pagina ? 'active' : '';
             $paginacion.append(`
@@ -295,7 +441,6 @@ $(document).ready(function () {
             `);
         }
 
-        // Botón Siguiente
         const deshabSig = data.pagina >= estadoApp.totalPaginas ? 'disabled' : '';
         $paginacion.append(`
             <li class="page-item ${deshabSig}">
@@ -308,7 +453,16 @@ $(document).ready(function () {
     // 6. EVENTOS DE BÚSQUEDA Y FILTRADO
     // ----------------------------------------------------------------
     function configurarEventos() {
-        // Búsqueda rápida por texto (Enter o Clic en Buscar)
+        // Clic en tarjetas de resumen de Inicio (filtra y va directo a Documentos)
+        $(document).on('click', '.btn-filtro-inicio', function () {
+            const estatus = $(this).data('estatus');
+            cambiarVista('documentos');
+            if (estatus) {
+                $('#filtro_estatus').val(estatus);
+                $('#btn_filtrar').click();
+            }
+        });
+
         $('#btn_buscar').on('click', function () {
             estadoApp.filtros.q = $('#input_buscar').val().trim();
             estadoApp.paginaActual = 1;
@@ -321,7 +475,6 @@ $(document).ready(function () {
             }
         });
 
-        // Botón Filtrar
         $('#btn_filtrar').on('click', function () {
             estadoApp.filtros.estatus = $('#filtro_estatus').val();
             estadoApp.filtros.desde = $('#filtro_desde').val();
@@ -330,7 +483,6 @@ $(document).ready(function () {
             cargarDocumentos();
         });
 
-        // Limpiar Filtros
         $('#btn_limpiar_filtros').on('click', function () {
             $('#input_buscar').val('');
             $('#filtro_estatus').val('todos');
@@ -347,7 +499,6 @@ $(document).ready(function () {
             cargarDocumentos();
         });
 
-        // Clic en paginación
         $(document).on('click', '.btn-pagina', function (e) {
             e.preventDefault();
             const pag = parseInt($(this).data('pag'));
@@ -358,31 +509,183 @@ $(document).ready(function () {
         });
 
         // ------------------------------------------------------------
-        // 7. DIGITALIZACIÓN: CÁMARA Y SELECCIÓN DE PDF
+        // 7. DIGITALIZACIÓN CON CÁMARA Y CONVERSIÓN A PDF
         // ------------------------------------------------------------
+        let streamCamaraActivo = null;
+        let fotoCapturadaDataUrl = null;
+
+        // Abrir Cámara
         $('#btn_camara').on('click', function () {
-            $('#input_archivo_camara').click();
+            // Intentar abrir cámara en vivo si el navegador lo soporta
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                abrirModalCamara();
+            } else {
+                // Dispositivos sin soporte de getUserMedia directo: abrir app nativa de cámara
+                $('#input_archivo_camara').click();
+            }
         });
 
+        function abrirModalCamara() {
+            const video = document.getElementById('video_camara');
+            fotoCapturadaDataUrl = null;
+
+            // Restablecer interfaz de la cámara
+            $('#video_camara').show();
+            $('#img_capturada').hide();
+            $('#btn_disparar_foto').removeClass('d-none');
+            $('#btn_repetir_foto').addClass('d-none');
+            $('#btn_confirmar_pdf').addClass('d-none');
+
+            const modalCamara = new bootstrap.Modal(document.getElementById('modalCapturaCamara'));
+            modalCamara.show();
+
+            // Solicitar acceso a la cámara (prioriza la trasera en móviles)
+            navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                },
+                audio: false
+            }).then(function (stream) {
+                streamCamaraActivo = stream;
+                video.srcObject = stream;
+                video.play();
+            }).catch(function (err) {
+                console.warn("No se pudo iniciar stream de cámara directa:", err);
+                modalCamara.hide();
+                // Fallback automático al input nativo de cámara
+                $('#input_archivo_camara').click();
+            });
+        }
+
+        function detenerStreamCamara() {
+            if (streamCamaraActivo) {
+                streamCamaraActivo.getTracks().forEach(track => track.stop());
+                streamCamaraActivo = null;
+            }
+            const video = document.getElementById('video_camara');
+            if (video) {
+                video.srcObject = null;
+            }
+        }
+
+        // Al cerrar o cancelar el modal de cámara
+        $('#modalCapturaCamara').on('hidden.bs.modal', function () {
+            detenerStreamCamara();
+        });
+
+        // Disparar fotografía
+        $('#btn_disparar_foto').on('click', function () {
+            const video = document.getElementById('video_camara');
+            const canvas = document.getElementById('canvas_camara');
+
+            if (!video.videoWidth) {
+                Swal.fire('Atención', 'La cámara aún está iniciando. Espera un segundo.', 'warning');
+                return;
+            }
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            fotoCapturadaDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+
+            // Mostrar la imagen capturada en lugar del video
+            $('#img_capturada').attr('src', fotoCapturadaDataUrl).show();
+            $('#video_camara').hide();
+
+            // Alternar botones
+            $('#btn_disparar_foto').addClass('d-none');
+            $('#btn_repetir_foto').removeClass('d-none');
+            $('#btn_confirmar_pdf').removeClass('d-none');
+        });
+
+        // Repetir fotografía
+        $('#btn_repetir_foto').on('click', function () {
+            $('#img_capturada').hide();
+            $('#video_camara').show();
+            $('#btn_disparar_foto').removeClass('d-none');
+            $('#btn_repetir_foto').addClass('d-none');
+            $('#btn_confirmar_pdf').addClass('d-none');
+            fotoCapturadaDataUrl = null;
+        });
+
+        // Confirmar foto y convertir automáticamente a PDF
+        $('#btn_confirmar_pdf').on('click', function () {
+            if (!fotoCapturadaDataUrl) return;
+
+            const $btn = $(this);
+            $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Generando PDF...');
+
+            const noOficio = $('#no_oficio').val().trim() || 'Documento';
+            const nombreArchivo = 'Foto_' + noOficio.replace(/[^a-zA-Z0-9_-]/g, '_') + '_' + Date.now() + '.pdf';
+
+            convertirDataUrlAPdf(fotoCapturadaDataUrl, nombreArchivo, function (pdfFile) {
+                $btn.prop('disabled', false).html('<i class="bi bi-file-earmark-pdf-fill me-1"></i> Guardar como PDF');
+
+                // Asignar el PDF generado al input de archivo
+                asignarArchivoAInput($('#input_archivo_pdf'), pdfFile);
+                $('#input_archivo_camara').val('');
+
+                // Mostrar en la tarjeta de previsualización
+                $('#preview_filename').text(pdfFile.name);
+                $('#preview_filesize').text(formatearTamano(pdfFile.size) + ' (PDF generado de foto)');
+                $('#file_preview_card').css('display', 'flex');
+
+                $('#btn_camara').addClass('active');
+                $('#btn_archivo_pdf').removeClass('active');
+
+                // Cerrar modal de cámara y detener stream
+                const modalEl = document.getElementById('modalCapturaCamara');
+                bootstrap.Modal.getInstance(modalEl).hide();
+
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Fotografía Digitalizada!',
+                    text: 'La fotografía se convirtió en documento PDF listo para guardar.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            });
+        });
+
+        // Botón seleccionar archivo PDF o imagen desde el explorador
         $('#btn_archivo_pdf').on('click', function () {
             $('#input_archivo_pdf').click();
         });
 
-        // Manejar archivo seleccionado de cámara o explorador
+        // Manejar cuando se selecciona un archivo de forma manual (cámara nativa o explorador)
         $('#input_archivo_camara, #input_archivo_pdf').on('change', function () {
             const input = this;
             if (input.files && input.files[0]) {
                 const file = input.files[0];
-                $('#preview_filename').text(file.name);
-                $('#preview_filesize').text(formatearTamano(file.size));
-                $('#file_preview_card').css('display', 'flex');
 
-                // Si se seleccionó en uno, limpiar el otro
-                if (input.id === 'input_archivo_camara') {
-                    $('#input_archivo_pdf').val('');
-                    $('#btn_camara').addClass('active');
-                    $('#btn_archivo_pdf').removeClass('active');
+                // Si seleccionaron una imagen directamente, convertirla a PDF con jsPDF
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const nombrePdf = file.name.replace(/\.[^/.]+$/, "") + ".pdf";
+                        convertirDataUrlAPdf(e.target.result, nombrePdf, function (pdfFile) {
+                            asignarArchivoAInput($('#input_archivo_pdf'), pdfFile);
+                            $('#input_archivo_camara').val('');
+
+                            $('#preview_filename').text(pdfFile.name);
+                            $('#preview_filesize').text(formatearTamano(pdfFile.size) + ' (Convertido a PDF)');
+                            $('#file_preview_card').css('display', 'flex');
+
+                            $('#btn_camara').addClass('active');
+                            $('#btn_archivo_pdf').removeClass('active');
+                        });
+                    };
+                    reader.readAsDataURL(file);
                 } else {
+                    // Es un PDF directo
+                    $('#preview_filename').text(file.name);
+                    $('#preview_filesize').text(formatearTamano(file.size));
+                    $('#file_preview_card').css('display', 'flex');
+
                     $('#input_archivo_camara').val('');
                     $('#btn_archivo_pdf').addClass('active');
                     $('#btn_camara').removeClass('active');
@@ -390,14 +693,59 @@ $(document).ready(function () {
             }
         });
 
-        // Quitar archivo seleccionado
         $('#btn_remover_archivo').on('click', function () {
             $('#input_archivo_camara').val('');
             $('#input_archivo_pdf').val('');
             $('#file_preview_card').hide();
             $('#btn_camara').removeClass('active');
             $('#btn_archivo_pdf').removeClass('active');
+            fotoCapturadaDataUrl = null;
         });
+
+        // ------------------------------------------------------------
+        // HELPER: CONVERSIÓN DE IMAGEN A PDF ESTÁNDAR (A4) CON JSPDF
+        // ------------------------------------------------------------
+        function convertirDataUrlAPdf(dataUrl, nombreArchivoBase, callback) {
+            const img = new Image();
+            img.onload = function () {
+                if (!window.jspdf || !window.jspdf.jsPDF) {
+                    console.error("jsPDF no está cargado.");
+                    return;
+                }
+
+                const { jsPDF } = window.jspdf;
+                const esHorizontal = img.width > img.height;
+                const doc = new jsPDF({
+                    orientation: esHorizontal ? 'landscape' : 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+
+                const pageW = doc.internal.pageSize.getWidth();
+                const pageH = doc.internal.pageSize.getHeight();
+                const margin = 10;
+                const maxW = pageW - (margin * 2);
+                const maxH = pageH - (margin * 2);
+
+                const scale = Math.min(maxW / img.width, maxH / img.height);
+                const finalW = img.width * scale;
+                const finalH = img.height * scale;
+                const posX = (pageW - finalW) / 2;
+                const posY = (pageH - finalH) / 2;
+
+                doc.addImage(dataUrl, 'JPEG', posX, posY, finalW, finalH, undefined, 'FAST');
+                const pdfBlob = doc.output('blob');
+                const pdfFile = new File([pdfBlob], nombreArchivoBase, { type: 'application/pdf' });
+                callback(pdfFile);
+            };
+            img.src = dataUrl;
+        }
+
+        function asignarArchivoAInput($input, file) {
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            $input[0].files = dataTransfer.files;
+        }
 
         // ------------------------------------------------------------
         // 8. ENVÍO DE FORMULARIO DE REGISTRO
@@ -429,18 +777,15 @@ $(document).ready(function () {
                             confirmButtonColor: '#0d3b66'
                         });
 
-                        // Limpiar formulario
                         form.reset();
                         $('#btn_remover_archivo').click();
 
-                        // Cerrar modal si estuviera abierto
                         const modalEl = document.getElementById('modalNuevoDocumento');
                         if (modalEl) {
                             const modalInstance = bootstrap.Modal.getInstance(modalEl);
                             if (modalInstance) modalInstance.hide();
                         }
 
-                        // Recargar lista
                         cargarDocumentos();
                     } else {
                         Swal.fire({
@@ -482,13 +827,12 @@ $(document).ready(function () {
             modal.show();
         });
 
-        // Limpiar visor al cerrar modal
         $('#modalVisorPdf').on('hidden.bs.modal', function () {
             $('#iframe_pdf_viewer').attr('src', 'about:blank');
         });
 
         // ------------------------------------------------------------
-        // 10. CAMBIO RÁPIDO DE ESTATUS CON SEGUIMIENTO
+        // 10. CAMBIO RÁPIDO DE ESTATUS
         // ------------------------------------------------------------
         $(document).on('click', '.btn-cambiar-estatus', function () {
             const idDoc = $(this).data('id');
@@ -556,30 +900,344 @@ $(document).ready(function () {
         });
 
         // ------------------------------------------------------------
-        // 11. NAVEGACIÓN EN MÓVIL (BOTTOM NAV)
+        // 11. NAVEGACIÓN EN MÓVIL
         // ------------------------------------------------------------
         $('.bottom-nav-item').on('click', function (e) {
             const destino = $(this).data('target');
             if (!destino) return;
 
-            e.preventDefault();
-            $('.bottom-nav-item').removeClass('active');
-            $(this).addClass('active');
-
             if (destino === 'nuevo') {
-                // Abrir modal o llevar al formulario
+                e.preventDefault();
                 const modalNuevo = new bootstrap.Modal(document.getElementById('modalNuevoDocumento'));
                 modalNuevo.show();
-            } else if (destino === 'buscar') {
-                $('html, body').animate({
-                    scrollTop: $('#search_filter_box').offset().top - 70
-                }, 400);
-                $('#input_buscar').focus();
-            } else if (destino === 'documentos' || destino === 'inicio') {
-                $('html, body').animate({
-                    scrollTop: 0
-                }, 300);
             }
+        });
+
+        // ------------------------------------------------------------
+        // 12. EVENTOS DE REPORTES
+        // ------------------------------------------------------------
+        $('#btn_filtrar_reporte').on('click', function () {
+            const filtros = {
+                desde: $('#reporte_desde').val(),
+                hasta: $('#reporte_hasta').val()
+            };
+            cargarReportes(filtros);
+        });
+
+        $('#btn_limpiar_reporte, #btn_recargar_reportes').on('click', function () {
+            $('#reporte_desde').val('');
+            $('#reporte_hasta').val('');
+            cargarReportes();
+        });
+
+        // ------------------------------------------------------------
+        // 13. EVENTOS DE USUARIOS
+        // ------------------------------------------------------------
+        $('#btn_recargar_usuarios').on('click', function () {
+            cargarUsuarios();
+        });
+
+        $('#form_nuevo_usuario').on('submit', function (e) {
+            e.preventDefault();
+
+            const form = this;
+            const $btn = $('#btn_guardar_usuario');
+            const textoOriginal = $btn.html();
+            $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Registrando...');
+
+            $.ajax({
+                url: 'api/save_usuario.php',
+                type: 'POST',
+                data: $(form).serialize(),
+                dataType: 'json',
+                success: function (res) {
+                    $btn.prop('disabled', false).html(textoOriginal);
+                    if (res.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Usuario Registrado!',
+                            text: `Se ha creado la cuenta para ${res.data.nombre_completo}.`,
+                            confirmButtonColor: '#0d3b66'
+                        });
+
+                        form.reset();
+                        const modalEl = document.getElementById('modalNuevoUsuario');
+                        if (modalEl) {
+                            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                            if (modalInstance) modalInstance.hide();
+                        }
+
+                        cargarUsuarios();
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: res.message || 'Verifica los datos ingresados.'
+                        });
+                    }
+                },
+                error: function (xhr) {
+                    $btn.prop('disabled', false).html(textoOriginal);
+                    let msg = 'Ocurrió un error al registrar el usuario.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error en el servidor',
+                        text: msg
+                    });
+                }
+            });
+        });
+
+        $(document).on('click', '.btn-toggle-usuario', function () {
+            const idUsr = $(this).data('id');
+            const nombre = $(this).data('nombre');
+            const estadoActual = $(this).data('estado');
+            const accion = estadoActual == 1 ? 'desactivar' : 'activar';
+
+            Swal.fire({
+                title: `¿Deseas ${accion} a este usuario?`,
+                text: `${nombre} ${estadoActual == 1 ? 'no podrá registrar oficios' : 'volverá a tener acceso'}.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#0d3b66',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: `Sí, ${accion}`,
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: 'api/toggle_usuario.php',
+                        type: 'POST',
+                        data: { id_usuario: idUsr },
+                        dataType: 'json',
+                        success: function (res) {
+                            if (res.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Estado actualizado',
+                                    timer: 1400,
+                                    showConfirmButton: false
+                                });
+                                cargarUsuarios();
+                            } else {
+                                Swal.fire('Error', res.message, 'error');
+                            }
+                        },
+                        error: function () {
+                            Swal.fire('Error', 'No se pudo actualizar el estado.', 'error');
+                        }
+                    });
+                }
+            });
+        });
+    }
+
+    // ----------------------------------------------------------------
+    // 14. LÓGICA DE REPORTES (KPIS Y CHART.JS)
+    // ----------------------------------------------------------------
+    function cargarReportes(filtros = {}) {
+        $.ajax({
+            url: 'api/get_reportes.php',
+            type: 'GET',
+            data: filtros,
+            dataType: 'json',
+            success: function (res) {
+                if (res.success && res.data) {
+                    renderizarDashboardReportes(res.data);
+                }
+            },
+            error: function () {
+                console.warn('Error al cargar datos del reporte');
+            }
+        });
+    }
+
+    function renderizarDashboardReportes(data) {
+        // Actualizar KPIs
+        $('#kpi_total').text(data.kpis.total);
+        $('#kpi_recibidos').text(data.kpis.recibidos);
+        $('#kpi_proceso').text(data.kpis.en_proceso);
+        $('#kpi_atendidos').text(data.kpis.atendidos);
+        $('#kpi_tasa_resolucion').text(data.kpis.tasa_resolucion + '%');
+
+        // Renderizar Gráfica de Estatus (Doughnut)
+        const ctxEstatus = document.getElementById('chartEstatus');
+        if (ctxEstatus) {
+            if (chartEstatusInstance) {
+                chartEstatusInstance.destroy();
+            }
+
+            const etiquetasEstatus = data.por_estatus.map(e => e.estatus);
+            const valoresEstatus = data.por_estatus.map(e => e.total);
+
+            chartEstatusInstance = new Chart(ctxEstatus, {
+                type: 'doughnut',
+                data: {
+                    labels: etiquetasEstatus,
+                    datasets: [{
+                        data: valoresEstatus,
+                        backgroundColor: ['#198754', '#ffc107', '#0d6efd'],
+                        borderWidth: 2,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Renderizar Gráfica de Tipos (Bar)
+        const ctxTipos = document.getElementById('chartTipos');
+        if (ctxTipos) {
+            if (chartTiposInstance) {
+                chartTiposInstance.destroy();
+            }
+
+            const etiquetasTipos = data.por_tipo.map(t => t.tipo);
+            const valoresTipos = data.por_tipo.map(t => t.total);
+
+            chartTiposInstance = new Chart(ctxTipos, {
+                type: 'bar',
+                data: {
+                    labels: etiquetasTipos,
+                    datasets: [{
+                        label: 'Cantidad de Documentos',
+                        data: valoresTipos,
+                        backgroundColor: '#0d3b66',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // Renderizar tabla de detalle del reporte
+        const $tbody = $('#tabla_reportes_body').empty();
+        if (!data.documentos || data.documentos.length === 0) {
+            $tbody.html(`
+                <tr>
+                    <td colspan="7" class="text-center py-3 text-muted">
+                        No se registraron documentos en el periodo seleccionado.
+                    </td>
+                </tr>
+            `);
+            return;
+        }
+
+        data.documentos.forEach(doc => {
+            const badgeClass = obtenerClaseBadge(doc.estatus);
+            const fecha = formatearFecha(doc.fecha_recepcion);
+
+            $tbody.append(`
+                <tr>
+                    <td><strong>${doc.no_oficio}</strong></td>
+                    <td>${fecha}</td>
+                    <td><span class="badge bg-secondary-subtle text-dark">${doc.tipo_documento}</span></td>
+                    <td>${doc.asunto}</td>
+                    <td>${doc.remitente}</td>
+                    <td>${doc.destinatario}</td>
+                    <td><span class="status-badge ${badgeClass}">${doc.estatus}</span></td>
+                </tr>
+            `);
+        });
+    }
+
+    // ----------------------------------------------------------------
+    // 15. LÓGICA DE USUARIOS
+    // ----------------------------------------------------------------
+    function cargarUsuarios() {
+        const $tbody = $('#tabla_usuarios_body');
+        $tbody.html(`
+            <tr>
+                <td colspan="7" class="text-center py-4 text-muted">
+                    <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                    Cargando usuarios...
+                </td>
+            </tr>
+        `);
+
+        $.ajax({
+            url: 'api/get_usuarios.php',
+            type: 'GET',
+            dataType: 'json',
+            success: function (res) {
+                if (res.success && res.data) {
+                    renderizarTablaUsuarios(res.data);
+                } else {
+                    $tbody.html(`<tr><td colspan="7" class="text-center py-3 text-danger">No se pudieron cargar los usuarios.</td></tr>`);
+                }
+            },
+            error: function () {
+                $tbody.html(`<tr><td colspan="7" class="text-center py-3 text-danger">Error de conexión al cargar usuarios.</td></tr>`);
+            }
+        });
+    }
+
+    function renderizarTablaUsuarios(usuarios) {
+        const $tbody = $('#tabla_usuarios_body').empty();
+
+        if (!usuarios || usuarios.length === 0) {
+            $tbody.html(`<tr><td colspan="7" class="text-center py-3 text-muted">No hay usuarios registrados.</td></tr>`);
+            return;
+        }
+
+        usuarios.forEach(u => {
+            const iniciales = u.nombre_completo.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+            const esAdmin = u.rol === 'admin';
+            const badgeRol = esAdmin 
+                ? '<span class="badge bg-primary-subtle text-primary border border-primary-subtle badge-role"><i class="bi bi-shield-lock-fill me-1"></i> Administrador</span>' 
+                : '<span class="badge bg-secondary-subtle text-dark border badge-role"><i class="bi bi-person-badge-fill me-1"></i> Operador Ventanilla</span>';
+
+            const badgeEstado = u.activo == 1 
+                ? '<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check-circle-fill me-1"></i> Activo</span>' 
+                : '<span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="bi bi-x-circle-fill me-1"></i> Inactivo</span>';
+
+            const btnAccion = u.id_usuario == 1 
+                ? '<span class="text-muted small">Protegido</span>'
+                : `<button type="button" class="btn btn-sm ${u.activo == 1 ? 'btn-outline-danger' : 'btn-outline-success'} btn-toggle-usuario" 
+                           data-id="${u.id_usuario}" 
+                           data-nombre="${u.nombre_completo}" 
+                           data-estado="${u.activo}" 
+                           title="${u.activo == 1 ? 'Desactivar usuario' : 'Activar usuario'}">
+                       <i class="bi ${u.activo == 1 ? 'bi-person-slash' : 'bi-person-check'}"></i> ${u.activo == 1 ? 'Desactivar' : 'Activar'}
+                   </button>`;
+
+            const fila = `
+                <tr>
+                    <td>
+                        <div class="user-avatar-initials">${iniciales}</div>
+                    </td>
+                    <td><strong>${u.nombre_completo}</strong></td>
+                    <td>${u.correo}</td>
+                    <td>${badgeRol}</td>
+                    <td>${badgeEstado}</td>
+                    <td class="text-muted small">${formatearFecha(u.creado_en ? u.creado_en.split(' ')[0] : '')}</td>
+                    <td>${btnAccion}</td>
+                </tr>
+            `;
+            $tbody.append(fila);
         });
     }
 

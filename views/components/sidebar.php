@@ -11,13 +11,13 @@
     </div>
     <ul class="sidebar-nav">
         <li class="sidebar-nav-item">
-            <a href="index.php" class="sidebar-nav-link">
+            <a href="#inicio" class="sidebar-nav-link nav-view-link active" data-view="inicio">
                 <i class="bi bi-house-door-fill"></i>
                 <span>Inicio</span>
             </a>
         </li>
         <li class="sidebar-nav-item">
-            <a href="index.php" class="sidebar-nav-link active">
+            <a href="#documentos" class="sidebar-nav-link nav-view-link" data-view="documentos">
                 <i class="bi bi-folder-fill"></i>
                 <span>Documentos</span>
             </a>
@@ -29,27 +29,21 @@
             </a>
         </li>
         <li class="sidebar-nav-item">
-            <a href="#search_filter_box" class="sidebar-nav-link" onclick="$('#input_buscar').focus();">
+            <a href="#search_filter_box" class="sidebar-nav-link nav-view-link" data-view="documentos" onclick="setTimeout(() => $('#input_buscar').focus(), 150);">
                 <i class="bi bi-search"></i>
                 <span>Buscar</span>
             </a>
         </li>
         <li class="sidebar-nav-item">
-            <a href="#" class="sidebar-nav-link text-white-50" onclick="Swal.fire('Módulo Informativo', 'Reportes de estadística y desempeño en desarrollo.', 'info');">
+            <a href="#reportes" class="sidebar-nav-link nav-view-link" data-view="reportes">
                 <i class="bi bi-bar-chart-line-fill"></i>
                 <span>Reportes</span>
             </a>
         </li>
         <li class="sidebar-nav-item">
-            <a href="#" class="sidebar-nav-link text-white-50" onclick="Swal.fire('Módulo Informativo', 'Gestión de usuarios y permisos administrativos.', 'info');">
+            <a href="#usuarios" class="sidebar-nav-link nav-view-link" data-view="usuarios">
                 <i class="bi bi-people-fill"></i>
                 <span>Usuarios</span>
-            </a>
-        </li>
-        <li class="sidebar-nav-item">
-            <a href="#" class="sidebar-nav-link text-white-50" onclick="Swal.fire('Configuración', 'Parámetros del sistema y dependencias.', 'info');">
-                <i class="bi bi-gear-fill"></i>
-                <span>Configuración</span>
             </a>
         </li>
     </ul>

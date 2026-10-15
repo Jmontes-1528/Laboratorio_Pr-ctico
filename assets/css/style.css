@@ -538,3 +538,116 @@ body {
     border: none;
     border-radius: 4px;
 }
+
+/* --------------------------------------------------------------------------
+   ESTILOS PARA USUARIOS Y ROLES
+   -------------------------------------------------------------------------- */
+.user-avatar-initials {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, var(--unach-blue-primary) 0%, var(--unach-blue-secondary) 100%);
+    color: #ffffff;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.badge-role {
+    font-size: 0.78rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   SOPORTE DE IMPRESIÓN OFICIAL (WINDOW.PRINT)
+   -------------------------------------------------------------------------- */
+@media print {
+    .sidebar, 
+    .top-navbar, 
+    .bottom-nav, 
+    .modal, 
+    .btn, 
+    #btn_imprimir_reporte,
+    #btn_recargar_reportes,
+    .search-filter-box,
+    .table-actions {
+        display: none !important;
+    }
+
+    body, .main-content, .page-container {
+        background-color: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .card-custom {
+        border: 1px solid #ccc !important;
+        box-shadow: none !important;
+        page-break-inside: avoid;
+    }
+
+    #seccion_reportes {
+        display: block !important;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   ESTILOS PARA DASHBOARD INICIO
+   -------------------------------------------------------------------------- */
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.hover-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
+}
+
+.timeline-activity {
+    position: relative;
+    padding-left: 1.25rem;
+}
+
+.timeline-activity::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 5px;
+    bottom: 5px;
+    width: 2px;
+    background-color: var(--unach-border-color);
+}
+
+.timeline-item {
+    position: relative;
+    padding-bottom: 1rem;
+    font-size: 0.85rem;
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -1.25rem;
+    top: 4px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--unach-blue-secondary);
+    border: 2px solid #ffffff;
+    box-shadow: 0 0 0 2px var(--unach-blue-secondary);
+}
+
+

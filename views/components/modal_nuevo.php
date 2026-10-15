@@ -53,25 +53,16 @@
                             <datalist id="datalist_destinatarios"></datalist>
                         </div>
 
-                        <!-- Estatus -->
-                        <div class="col-md-6">
-                            <label for="select_estatus" class="form-label fw-bold">
-                                Estatus <span class="text-danger">*</span>
-                            </label>
-                            <select class="form-select" id="select_estatus" name="estatus" required>
-                                <option value="1" selected>🟢 Recibido</option>
-                                <option value="2">🟡 En proceso</option>
-                                <option value="3">🔵 Atendido</option>
-                            </select>
-                        </div>
+                        <!-- Estatus predeterminado automático (Recibido = 1) -->
+                        <input type="hidden" id="select_estatus" name="estatus" value="1">
 
                         <!-- Tipo de Documento -->
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <label for="select_tipo" class="form-label fw-bold">
                                 Tipo de Documento
                             </label>
                             <select class="form-select" id="select_tipo" name="id_tipo">
-                                <option value="1">Oficio</option>
+                                <option value="1" selected>Oficio</option>
                                 <option value="2">Circular</option>
                                 <option value="3">Solicitud</option>
                                 <option value="4">Invitación</option>
