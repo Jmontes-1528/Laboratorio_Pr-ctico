@@ -5,11 +5,9 @@
 -- Compatible con MySQL / MariaDB (XAMPP)
 -- ====================================================================
 
-CREATE DATABASE IF NOT EXISTS `gestion_documentos` 
-CHARACTER SET utf8mb4 
-COLLATE utf8mb4_unicode_ci;
-
-USE `gestion_documentos`;
+-- --------------------------------------------------------------------
+-- Inicialización segura
+-- --------------------------------------------------------------------
 
 -- Desactivar temporalmente revisión de llaves foráneas para creación limpia
 SET FOREIGN_KEY_CHECKS = 0;
@@ -184,49 +182,11 @@ CREATE TABLE `historial_seguimiento` (
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- --------------------------------------------------------------------
--- 9. VISTA: v_documentos_completos (Optimiza las consultas de PHP)
--- --------------------------------------------------------------------
-CREATE OR REPLACE VIEW `v_documentos_completos` AS
-SELECT 
-    d.`id_documento`,
-    d.`no_oficio`,
-    d.`fecha_documento`,
-    d.`fecha_recepcion`,
-    d.`asunto`,
-    d.`id_tipo`,
-    COALESCE(td.`nombre`, 'General') AS `tipo_documento`,
-    d.`id_remitente`,
-    r.`nombre_remitente` AS `remitente`,
-    r.`institucion_dependencia` AS `remitente_institucion`,
-    d.`id_destinatario`,
-    des.`nombre_destinatario` AS `destinatario`,
-    des.`area_departamento` AS `destinatario_area`,
-    e.`id_estatus`,
-    e.`nombre` AS `estatus`,
-    e.`color_badge` AS `estatus_color`,
-    d.`id_usuario_registro`,
-    COALESCE(u.`nombre_completo`, 'Sistema') AS `registrado_por`,
-    d.`observaciones`,
-    a.`id_archivo`,
-    a.`ruta_archivo` AS `archivo_pdf`,
-    a.`nombre_original` AS `archivo_nombre_original`,
-    d.`creado_en`,
-    d.`actualizado_en`
-FROM `documentos` d
-INNER JOIN `estatus_documento` e ON d.`id_estatus` = e.`id_estatus`
-LEFT JOIN `tipos_documento` td ON d.`id_tipo` = td.`id_tipo`
-INNER JOIN `remitentes` r ON d.`id_remitente` = r.`id_remitente`
-INNER JOIN `destinatarios` des ON d.`id_destinatario` = des.`id_destinatario`
-LEFT JOIN `usuarios` u ON d.`id_usuario_registro` = u.`id_usuario`
-LEFT JOIN `archivos_documento` a ON d.`id_documento` = a.`id_documento` AND a.`es_principal` = 1;
 -- ====================================================================
 -- SISTEMA DE GESTIÓN DE DOCUMENTOS DE UNA OFICINA
 -- Datos de prueba e iniciales (Seeds)
 -- Basados en los casos de prueba del Mockup Oficial (Pág. 4)
 -- ====================================================================
-
-USE `gestion_documentos`;
 
 -- Limpiar datos previos si existieran
 SET FOREIGN_KEY_CHECKS = 0;

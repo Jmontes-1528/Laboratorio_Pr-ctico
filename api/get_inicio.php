@@ -23,7 +23,7 @@ try {
 
     // 2. Últimos 5 documentos registrados
     $stmtDocs = $db->query("
-        SELECT * FROM v_documentos_completos 
+        SELECT * FROM " . SQL_FROM_DOCUMENTOS_COMPLETOS . " 
         ORDER BY fecha_recepcion DESC, id_documento DESC 
         LIMIT 5
     ");

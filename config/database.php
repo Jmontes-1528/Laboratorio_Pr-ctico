@@ -14,12 +14,30 @@ class Database {
 
     public static function getConnection(): PDO {
         if (self::$instance === null) {
-            // Permite variables de entorno (ideal para despliegue en la nube) o valores locales de XAMPP
-            $host     = getenv('DB_HOST')     ?: '127.0.0.1';
-            $port     = getenv('DB_PORT')     ?: '3306';
-            $dbname   = getenv('DB_NAME')     ?: 'gestion_documentos';
-            $username = getenv('DB_USER')     ?: 'root';
-            $password = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '';
+            // Detectar automáticamente si estamos en servidor local (XAMPP) o en la nube (InfinityFree)
+            $serverName = $_SERVER['SERVER_NAME'] ?? ($_SERVER['HTTP_HOST'] ?? 'localhost');
+            $cleanHost  = strtolower(explode(':', $serverName)[0]);
+            $isLocal    = in_array($cleanHost, ['localhost', '127.0.0.1']);
+
+            if (!$isLocal) {
+                // ==============================================================
+                // CREDENCIALES EN LA NUBE (InfinityFree)
+                // ==============================================================
+                $host     = 'sql210.infinityfree.com';
+                $port     = '3306';
+                $dbname   = 'if0_43193286_gestion_documentos';
+                $username = 'if0_43193286';
+                $password = 'Molina710';
+            } else {
+                // ==============================================================
+                // CREDENCIALES LOCALES (XAMPP)
+                // ==============================================================
+                $host     = getenv('DB_HOST')     ?: '127.0.0.1';
+                $port     = getenv('DB_PORT')     ?: '3306';
+                $dbname   = getenv('DB_NAME')     ?: 'gestion_documentos';
+                $username = getenv('DB_USER')     ?: 'root';
+                $password = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : '';
+            }
 
             $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset=utf8mb4";
 

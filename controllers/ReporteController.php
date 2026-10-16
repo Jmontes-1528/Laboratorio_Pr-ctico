@@ -116,7 +116,7 @@ class ReporteController {
 
         // 4. Últimos documentos para la tabla del reporte
         $sqlUltimos = "
-            SELECT * FROM v_documentos_completos
+            SELECT * FROM " . SQL_FROM_DOCUMENTOS_COMPLETOS . "
             {$sqlWhere}
             ORDER BY fecha_recepcion DESC, id_documento DESC
             LIMIT 20

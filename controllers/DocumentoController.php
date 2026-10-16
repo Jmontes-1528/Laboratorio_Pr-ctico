@@ -77,7 +77,7 @@ class DocumentoController {
         $sqlWhere = count($where) > 0 ? " WHERE " . implode(" AND ", $where) : "";
 
         // Contar total para paginación
-        $countStmt = $this->db->prepare("SELECT COUNT(*) as total FROM v_documentos_completos" . $sqlWhere);
+        $countStmt = $this->db->prepare("SELECT COUNT(*) as total FROM " . SQL_FROM_DOCUMENTOS_COMPLETOS . $sqlWhere);
         $countStmt->execute($params);
         $totalRegistros = (int)$countStmt->fetchColumn();
 
@@ -87,7 +87,7 @@ class DocumentoController {
         $offset = ($pagina - 1) * $porPagina;
 
         // Consulta de datos ordenados cronológicamente
-        $sql = "SELECT * FROM v_documentos_completos" . $sqlWhere . " ORDER BY fecha_recepcion DESC, id_documento DESC LIMIT :limit OFFSET :offset";
+        $sql = "SELECT * FROM " . SQL_FROM_DOCUMENTOS_COMPLETOS . $sqlWhere . " ORDER BY fecha_recepcion DESC, id_documento DESC LIMIT :limit OFFSET :offset";
         $stmt = $this->db->prepare($sql);
 
         foreach ($params as $key => $val) {
@@ -111,7 +111,7 @@ class DocumentoController {
      * Obtener un solo documento por ID con su historial y archivo
      */
     public function obtenerPorId(int $id): ?array {
-        $stmt = $this->db->prepare("SELECT * FROM v_documentos_completos WHERE id_documento = :id LIMIT 1");
+        $stmt = $this->db->prepare("SELECT * FROM " . SQL_FROM_DOCUMENTOS_COMPLETOS . " WHERE id_documento = :id LIMIT 1");
         $stmt->execute([':id' => $id]);
         $documento = $stmt->fetch();
 
