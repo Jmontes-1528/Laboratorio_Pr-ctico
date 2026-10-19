@@ -1,11 +1,11 @@
 # REPORTE TÉCNICO
 
-**Institución:** Benemérita Universidad Autónoma de Chiapas (UNACH)  
-**Dependencia:** Escuela de Tecnologías Digitales Aplicadas (ETDA) – Campus IV Tapachula  
-**Programa Educativo:** Licenciatura en Ingeniería en Desarrollo y Tecnologías de Software  
-**Asignatura:** Desarrollo de Aplicaciones Web y Móviles  
-**Proyecto:** Sistema de Gestión de Documentos de una Oficina  
-**Fecha:** Octubre 2026  
+**Institución:** Benemérita Universidad Autónoma de Chiapas (UNACH)
+**Dependencia:** Escuela de Tecnologías Digitales Aplicadas (ETDA) – Campus IV Tapachula
+**Programa Educativo:** Licenciatura en Ingeniería en Desarrollo y Tecnologías de Software
+**Asignatura:** Desarrollo de Aplicaciones Web y Móviles
+**Proyecto:** Sistema de Gestión de Documentos de una Oficina
+**Fecha:** Octubre 2026
 
 ---
 
@@ -28,10 +28,10 @@ En entornos institucionales y de oficina se reciben diariamente diversas comunic
 ### 2.2 Objetivos
 - **General:** Desarrollar una aplicación web responsiva que permita registrar, digitalizar, clasificar, organizar, consultar y dar seguimiento en tiempo real a los documentos recibidos.
 - **Específicos:**
-  - Implementar captura fotográfica directa desde dispositivos móviles o carga de archivos PDF.
-  - Diseñar una interfaz intuitiva con navegación inferior fija para móviles y barra lateral institucional para computadoras de escritorio.
-  - Implementar un motor de búsqueda y filtrado asíncrono mediante jQuery y AJAX.
-  - Disponer de un visor de PDF integrado para consultar y descargar la evidencia documental sin abandonar el sistema.
+ - Implementar captura fotográfica directa desde dispositivos móviles o carga de archivos PDF.
+ - Diseñar una interfaz intuitiva con navegación inferior fija para móviles y barra lateral institucional para computadoras de escritorio.
+ - Implementar un motor de búsqueda y filtrado asíncrono mediante jQuery y AJAX.
+ - Disponer de un visor de PDF integrado para consultar y descargar la evidencia documental sin abandonar el sistema.
 
 ---
 
@@ -41,24 +41,24 @@ El sistema implementa una arquitectura por capas desacoplada (Frontend, Backend 
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│                   CAPA DE PRESENTACIÓN                 │
-│   HTML5 + Bootstrap 5.3 + Custom UNACH CSS + jQuery    │
-│   - Vista Móvil: Bottom Navigation Bar + Cámara Táctil │
-│   - Vista Escritorio: Sidebar UNACH + Tabla Dinámica   │
+│ CAPA DE PRESENTACIÓN │
+│ HTML5 + Bootstrap 5.3 + Custom UNACH CSS + jQuery │
+│ - Vista Móvil: Bottom Navigation Bar + Cámara Táctil │
+│ - Vista Escritorio: Sidebar UNACH + Tabla Dinámica │
 └───────────────────────────┬────────────────────────────┘
-                            │ Peticiones Asíncronas (AJAX / JSON / FormData)
+ │ Peticiones Asíncronas (AJAX / JSON / FormData)
 ┌───────────────────────────▼────────────────────────────┐
-│                   CAPA DE NEGOCIO (PHP)                │
-│   - API Endpoints (get_documentos, save_documento, etc)│
-│   - Controlador: DocumentoController.php               │
-│   - Almacenamiento Seguro: uploads/documentos/         │
+│ CAPA DE NEGOCIO (PHP) │
+│ - API Endpoints (get_documentos, save_documento, etc)│
+│ - Controlador: DocumentoController.php │
+│ - Almacenamiento Seguro: uploads/documentos/ │
 └───────────────────────────┬────────────────────────────┘
-                            │ PDO (Sentencias Preparadas)
+ │ PDO (Sentencias Preparadas)
 ┌───────────────────────────▼────────────────────────────┐
-│                    CAPA DE DATOS (MySQL)               │
-│   - Base de Datos Normalizada (3FN)                    │
-│   - Tablas: documentos, estatus, remitentes, etc.      │
-│   - Vista SQL: v_documentos_completos                  │
+│ CAPA DE DATOS (MySQL) │
+│ - Base de Datos Normalizada (3FN) │
+│ - Tablas: documentos, estatus, remitentes, etc. │
+│ - Consultas relacionales optimizadas (3FN) │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -71,7 +71,7 @@ Para garantizar integridad referencial y escalabilidad, el modelo relacional sep
 - **`documentos`**: Tabla principal con llaves foráneas e índices en `no_oficio`, `fecha_recepcion` y `id_estatus`.
 - **`archivos_documento`**: Metadatos de la digitalización física (PDFs o fotos capturadas).
 - **`historial_seguimiento`**: Bitácora de auditoría que registra cada cambio de estatus con fecha, hora y responsable.
-- **`v_documentos_completos`**: Vista SQL optimizada para reducir la carga del servidor en consultas filtradas.
+- **Consultas Relacionales Optimizadas**: Subconsultas unificadas para máxima compatibilidad con cualquier motor MySQL/MariaDB en la nube.
 
 ---
 
@@ -80,9 +80,9 @@ Para garantizar integridad referencial y escalabilidad, el modelo relacional sep
 ### 4.1 Registro y Digitalización Inmediata
 - Formulario validado con campos obligatorios: *Número de Oficio, Fecha de Recepción, Asunto, Remitente, Destinatario y Estatus*.
 - **Módulo de Digitalización Dual:**
-  - **Tomar foto del documento:** Invoca la cámara nativa del teléfono móvil mediante la directiva `capture="environment"`.
-  - **Seleccionar PDF:** Permite cargar archivos escaneados desde el explorador de archivos.
-  - Validación en servidor de tipos MIME (`application/pdf`, `image/jpeg`, `image/png`) y peso máximo (15 MB).
+ - **Tomar foto del documento:** Invoca la cámara nativa del teléfono móvil mediante la directiva `capture="environment"`.
+ - **Seleccionar PDF:** Permite cargar archivos escaneados desde el explorador de archivos.
+ - Validación en servidor de tipos MIME (`application/pdf`, `image/jpeg`, `image/png`) y peso máximo (15 MB).
 
 ### 4.2 Búsqueda y Filtros Combinados (AJAX)
 - Búsqueda en tiempo real por coincidencia en texto (número de oficio, palabras clave del asunto, remitente o destinatario).
@@ -112,6 +112,6 @@ Para garantizar integridad referencial y escalabilidad, el modelo relacional sep
 ---
 
 ## 6. Conclusiones
-La implementación del Sistema de Gestión de Documentos demuestra que la combinación de **PHP + MySQL** en el backend y **Bootstrap + jQuery** en el frontend proporciona una solución robusta, liviana y de rápida adopción para oficinas administrativas. 
+La implementación del Sistema de Gestión de Documentos demuestra que la combinación de **PHP + MySQL** en el backend y **Bootstrap + jQuery** en el frontend proporciona una solución robusta, liviana y de rápida adopción para oficinas administrativas.
 
 La normalización en 3FN y la interfaz responsiva inspirada en los lineamientos institucionales de la UNACH permiten erradicar el traspapeleo y optimizar los tiempos de atención documental en más de un 70%.
