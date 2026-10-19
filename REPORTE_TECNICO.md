@@ -58,7 +58,7 @@ El sistema implementa una arquitectura por capas desacoplada (Frontend, Backend 
 │                    CAPA DE DATOS (MySQL)               │
 │   - Base de Datos Normalizada (3FN)                    │
 │   - Tablas: documentos, estatus, remitentes, etc.      │
-│   - Vista SQL: v_documentos_completos                  │
+│   - Consultas relacionales optimizadas (3FN)           │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -71,7 +71,7 @@ Para garantizar integridad referencial y escalabilidad, el modelo relacional sep
 - **`documentos`**: Tabla principal con llaves foráneas e índices en `no_oficio`, `fecha_recepcion` y `id_estatus`.
 - **`archivos_documento`**: Metadatos de la digitalización física (PDFs o fotos capturadas).
 - **`historial_seguimiento`**: Bitácora de auditoría que registra cada cambio de estatus con fecha, hora y responsable.
-- **`v_documentos_completos`**: Vista SQL optimizada para reducir la carga del servidor en consultas filtradas.
+- **Consultas Relacionales Optimizadas**: Subconsultas unificadas para máxima compatibilidad con cualquier motor MySQL/MariaDB en la nube.
 
 ---
 
